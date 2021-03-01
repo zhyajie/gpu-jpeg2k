@@ -43,4 +43,6 @@ void init_device(type_parameters *param)
 	cuda_memcpy_htd(&h_tmp, d_tmp, sizeof(int));
 	h_tmp = 2;
 	cuda_memcpy_dth(d_tmp, &h_tmp, sizeof(int));
+	cuda_d_free(d_tmp);
+
 }

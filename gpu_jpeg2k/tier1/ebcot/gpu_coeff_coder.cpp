@@ -106,7 +106,7 @@ float gpuEncode(EntropyCodingTaskInfo *infos, int count, int targetSize)
 
 	if(targetSize == 0)
 	{
-		//printf("No pcrd\n");
+		printf("No pcrd\n");
 		CHECK_ERRORS(GPU_JPEG2K::launch_encode((int) ceil((float) codeBlocks / THREADS), THREADS, d_stBuffors, d_cxd_pairs, maxOutLength, d_infos, codeBlocks));
 	}
 	else
@@ -392,6 +392,46 @@ void decode_tile(type_tile *tile)
 //	printf("%d\n", num_tasks);
 
 	float t = gpuDecode(tasks, num_tasks);
+
+	printf("kernel consumption: %f\n", t);
+
+	ii = cblks.begin();
+
+	for(int i = 0; i < num_tasks; i++, ++ii)
+	{
+		(*ii)->data_d = tasks[i].coefficients;
+	}
+
+	free(tasks);
+
+//	stop_measure(INFO);
+
+//	println_end(INFO);
+}
+
+
+void decode_tile_cpu(type_tile *tile)
+{
+//	println_start(INFO);
+
+//	start_measure();
+
+	std::list<type_codeblock *> cblks;
+	extract_cblks(tile, cblks);
+
+	EntropyCodingTaskInfo *tasks = (EntropyCodingTaskInfo *) malloc(sizeof(EntropyCodingTaskInfo) * cblks.size());
+
+	std::list<type_codeblock *>::iterator ii = cblks.begin();
+
+	int num_tasks = 0;
+	for(; ii != cblks.end(); ++ii)
+	{
+		convert_to_decoding_task(tasks[num_tasks++], *(*ii));
+	}
+
+//	printf("%d\n", num_tasks);
+
+	float t = cpuDecode(tasks, num_tasks);
 
 	printf("kernel consumption: %f\n", t);
 

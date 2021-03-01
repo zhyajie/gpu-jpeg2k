@@ -47,7 +47,7 @@ void cuda_d_free(void *data)
 
 void cuda_h_free(void *data) {
 	cudaFreeHost(data);
-//	checkCUDAError("cuda_h_free");
+	checkCUDAError("cuda_h_free");
 }
 
 void cuda_set_device_flags() {
@@ -96,7 +96,7 @@ void cuda_h_allocate_mem(void **data, uint64_t mem_size)
  */
 void cuda_d_allocate_mem(void **data, uint64_t mem_size)
 {
-	println_var(INFO, "mem_size: %u", mem_size);
+	//println_var(INFO, "mem_size: %u", mem_size);
 	cudaMalloc(data, mem_size);
 	checkCUDAError("cuda_d_allocate_mem");
 }

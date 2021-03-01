@@ -53,7 +53,7 @@ along with GPU JPEG2K. If not, see <http://www.gnu.org/licenses/>.
  */
 void init_image(FIBITMAP* dib, type_image *container, type_parameters *param)
 {
-	//	println_start(INFO);
+		println_start(INFO);
 	container->height = FreeImage_GetHeight(dib);
 	container->width = FreeImage_GetWidth(dib);
 	container->depth = FreeImage_GetBPP(dib);
@@ -67,7 +67,7 @@ void init_image(FIBITMAP* dib, type_image *container, type_parameters *param)
 	set_coding_parameters(container, param);
 	init_tiles(&container, param);
 
-//	println_end(INFO);
+	println_end(INFO);
 }
 
 uint8_t get_num_comp(FIBITMAP* dib)
@@ -150,7 +150,7 @@ void FreeImageErrorHandler(FREE_IMAGE_FORMAT fif, const char *message) {
  */
 long int read_ordinary_image(type_image **_container, type_parameters *param)
 {
-	//	println_start(INFO);
+	println_start(INFO);
 #ifdef READ_TIME
 	long int start_load;
 	start_load = start_measure();
@@ -161,7 +161,7 @@ long int read_ordinary_image(type_image **_container, type_parameters *param)
 	FIBITMAP* dib = FreeImage_Load(formato, container->in_file, 0);
 	FREE_IMAGE_TYPE image_type = FreeImage_GetImageType(dib);
 	long int copy_time = 0;
-
+	println_var(INFO, "image_type %d",image_type);
 #ifdef READ_TIME
 	cudaThreadSynchronize();
 	printf("Load img:%ld\n", stop_measure(start_load));
@@ -171,13 +171,13 @@ long int read_ordinary_image(type_image **_container, type_parameters *param)
 
 	if(image_type == FIT_BITMAP)
 	{
-//		printf("BITMAP\n");
+		printf("BITMAP\n");
 #ifdef READ_TIME
 		long int start_convert;
 		start_convert = start_measure();
 #endif
 
-		dib = FreeImage_ConvertTo24Bits(dib);
+		//dib = FreeImage_ConvertTo24Bits(dib);
 
 #ifdef READ_TIME
 		cudaThreadSynchronize();
@@ -202,8 +202,8 @@ long int read_ordinary_image(type_image **_container, type_parameters *param)
 		printf("Init img:%ld\n", stop_measure(start_read));
 #endif
 
-//		println_var(INFO, "Loaded %s: x:%d y:%d channels:%d depth:%d ",
-//				path, container->width, container->height, container->num_components, container->depth);
+		println_var(INFO, "Loaded %s: x:%d y:%d channels:%d depth:%d ",
+				container->in_file, container->width, container->height, container->num_components, container->depth);
 
 #ifdef READ_TIME
 		long int start_raw;
@@ -270,7 +270,7 @@ long int read_ordinary_image(type_image **_container, type_parameters *param)
 		//free(bits);
 	} else if(image_type == FIT_RGB16 || image_type == FIT_UINT16)
 	{
-//		printf("RGB16 or UINT16\n");
+		printf("RGB16 or UINT16\n");
 		init_image(dib, container, param);
 
 		int scan_width = FreeImage_GetPitch(dib)/sizeof(unsigned short);
@@ -298,8 +298,9 @@ long int read_ordinary_image(type_image **_container, type_parameters *param)
 		}
 		FreeImage_Unload(dib);
 	} else
-	{
+	{	
 		init_image(dib, container, param);
+		
 		dib = FreeImage_ConvertToType(dib, FIT_DOUBLE, TRUE);
 
 		if(dib == NULL)
@@ -307,9 +308,8 @@ long int read_ordinary_image(type_image **_container, type_parameters *param)
 			printf("Conversion not allowed!\n");
 			exit(0);
 		}
-
+		
 		int scan_width = FreeImage_GetPitch(dib)/sizeof(double);
-
 		if(FreeImage_HasPixels(dib) == FALSE)
 		{
 			printf("Do not have pixel data!\n");
@@ -432,6 +432,7 @@ int save_img_ord(type_image *img, const char *filename)
 					//					}
 				}
 			}
+			
 		}
 	}
 

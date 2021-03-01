@@ -10,11 +10,15 @@ find_package(PkgConfig REQUIRED)
 cuda_add_library(gpu_coeff_coder 
 	gpu_coeff_coder.cpp 
 	gpu_coeff_coder2.cu
+	cpu_coeff_coder2.cpp
 	coeff_coder_pcrd.cu
+
 	)
 	
 #target_link_libraries(gpu_coeff_coder ${XML_LIBRARIES})
 
 TARGET_LINK_LIBRARIES(gpu_coeff_coder 
 	misc
+	threads
+	-pthread
 )

@@ -3,12 +3,13 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/CMake" "${PROJECT_SOURCE_DIR}/CMake/cuda" ${CMAKE_MODULE_PATH})
 FIND_PACKAGE(CUDA)
 FIND_PACKAGE(FreeImage)
-
+add_definitions(-DPART_TIME)
+add_definitions(-DGLOBAL_TIME)
 #Uncomment next line to enable debugging (for use with cuda-gdb)
 #SET(CUDA_NVCC_FLAGS -g -G --compiler-options -fpermissive)
-SET(CMAKE_CXX_FLAGS "-O3 -fno-builtin")
-SET(CMAKE_CC_FLAGS "-O3 -fno-builtin")
-SET(CUDA_NVCC_FLAGS -O3 --compiler-options -fpermissive -arch sm_20 --maxrregcount 64 --ptxas-options=-v)
+SET(CMAKE_CXX_FLAGS "-O3 -fno-builtin -std=c++0x -lpthread")
+SET(CMAKE_CC_FLAGS "-O3 -fno-builtin -std=c++0x -lpthread")
+SET(CUDA_NVCC_FLAGS -O3 --compiler-options -fpermissive -arch=sm_61 -std=c++11 -lpthread)
 #SET(CUDA_NVCC_FLAGS --compiler-options -fpermissive -arch sm_20 --maxrregcount 64 --ptxas-options=-v)
 SET(CUDA_VERBOSE_BUILD ON)
 
@@ -24,6 +25,7 @@ add_subdirectory(dwt)
 add_subdirectory(preprocessing)
 add_subdirectory(misc)
 add_subdirectory(tier1)
+add_subdirectory(threads)
 add_subdirectory(tier2)
 add_subdirectory(file_format)
 add_subdirectory(file_access)
@@ -66,7 +68,8 @@ tier2
 klt
 file_format
 file_access
-types)
+types
+threads)
 
 cuda_add_executable(jp2decoder  
 print_info/print_info.c

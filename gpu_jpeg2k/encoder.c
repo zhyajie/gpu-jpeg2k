@@ -88,7 +88,6 @@ int main(int argc, char **argv)
 	}
 
 	init_device(param);
-
 #ifdef PART_TIME
 	long int start_read;
 	start_read = start_measure();
@@ -101,7 +100,7 @@ int main(int argc, char **argv)
 
 #ifdef PART_TIME
 	cudaThreadSynchronize();
-//	printf("Read img:%ld\n", stop_measure(start_read));
+	printf("Read img:%ld\n", stop_measure(start_read));
 #endif
 
 #ifdef GLOBAL_TIME
@@ -118,7 +117,7 @@ int main(int argc, char **argv)
 
 #ifdef PART_TIME
 	cudaThreadSynchronize();
-	printf("%ld\n", stop_measure(start_mct));
+	printf("mct %ld\n", stop_measure(start_mct));
 #endif
 	int i = 0;
 	type_tile *tile = NULL;
@@ -136,7 +135,7 @@ int main(int argc, char **argv)
 
 #ifdef PART_TIME
 	cudaThreadSynchronize();
-	printf("%ld\n", stop_measure(start_dwt));
+	printf("fwt %ld\n", stop_measure(start_dwt));
 #endif
 
 #ifdef PART_TIME
@@ -148,7 +147,7 @@ int main(int argc, char **argv)
 
 #ifdef PART_TIME
 	cudaThreadSynchronize();
-	printf("%ld\n", stop_measure(start_qs));
+	printf("quantize_tile %ld\n", stop_measure(start_qs));
 #endif
 
 #ifdef PART_TIME
@@ -160,7 +159,7 @@ int main(int argc, char **argv)
 
 #ifdef PART_TIME
 	cudaThreadSynchronize();
-	printf("%ld\n", stop_measure(start_coder));
+	printf("encode_tile %ld\n", stop_measure(start_coder));
 #endif
 	}
 
@@ -173,11 +172,11 @@ int main(int argc, char **argv)
 
 #ifdef PART_TIME
 	cudaThreadSynchronize();
-	printf("%ld\n", stop_measure(start_cd));
+	printf("write_codestream %ld\n", stop_measure(start_cd));
 #endif
 
 #ifdef GLOBAL_TIME
-	printf("%ld\n", stop_measure(start_global));
+	printf("GLOBAL_TIME %ld\n", stop_measure(start_global));
 #endif
 
 	free(img);

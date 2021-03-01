@@ -38,13 +38,14 @@ extern "C" {
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
-
+#include <string.h>
 #include <list>
 
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 
 #include "gpu_coeff_coder2.cuh"
+#include "cpu_coeff_coder2.h"
 #include "coeff_coder_pcrd.cuh"
 
 //TODO: shouldn't those two methodes be moved to some more generic place, so that they can  be used by all CUDA calls?
@@ -232,6 +233,98 @@ float gpuDecode(EntropyCodingTaskInfo *infos, int count)
 	return elapsed;
 }
 
+float cpuDecode(EntropyCodingTaskInfo *infos, int count)
+{
+	int codeBlocks = count;
+	int maxOutLength = MAX_CODESTREAM_SIZE;
+
+	int n = 0;
+	for(int i = 0; i < codeBlocks; i++)
+		n += infos[i].width * infos[i].height;
+
+	byte *h_inbuf;
+	CPU_JPEG2K::CoefficientState *h_stBuffors;
+
+	CPU_JPEG2K::CodeBlockAdditionalInfo *h_infos = (CPU_JPEG2K::CodeBlockAdditionalInfo *) malloc(sizeof(CPU_JPEG2K::CodeBlockAdditionalInfo) * codeBlocks);
+	//CodeBlockAdditionalInfo *d_infos;
+
+	h_inbuf = (byte *) malloc(sizeof(byte) * codeBlocks * maxOutLength);
+
+
+	// cuda_d_allocate_mem((void **) &d_inbuf, sizeof(byte) * codeBlocks * maxOutLength);
+	// cuda_d_allocate_mem((void **) &d_infos, sizeof(CodeBlockAdditionalInfo) * codeBlocks);
+
+	int magconOffset = 0;
+
+	for(int i = 0; i < codeBlocks; i++)
+	{
+		h_infos[i].width = infos[i].width;
+		h_infos[i].height = infos[i].height;
+		h_infos[i].nominalWidth = infos[i].nominalWidth;
+		h_infos[i].stripeNo = (int) ceil(infos[i].height / 4.0f);
+		h_infos[i].subband = infos[i].subband;
+		h_infos[i].magconOffset = magconOffset + infos[i].width;
+		h_infos[i].magbits = infos[i].magbits;
+		h_infos[i].length = infos[i].length;
+		h_infos[i].significantBits = infos[i].significantBits;
+
+		//cuda_d_allocate_mem((void **) &(h_infos[i].coefficients), sizeof(int) * infos[i].nominalWidth * infos[i].nominalHeight);
+		h_infos[i].coefficients = (int *) malloc(sizeof(int) * infos[i].nominalWidth * infos[i].nominalHeight);
+		infos[i].coefficients = h_infos[i].coefficients;
+
+		//cuda_memcpy_htd(infos[i].codeStream, (void *) (d_inbuf + i * maxOutLength), sizeof(byte) * infos[i].length);
+		memcpy(h_inbuf + i * maxOutLength,infos[i].codeStream, sizeof(byte) * infos[i].length);
+		magconOffset += h_infos[i].width * (h_infos[i].stripeNo + 2);
+	}
+
+	h_stBuffors = (CPU_JPEG2K::CoefficientState *) malloc(sizeof(CPU_JPEG2K::CoefficientState) * magconOffset);
+	//cuda_d_allocate_mem((void **) &d_stBuffors, sizeof(CPU_JPEG2K::CoefficientState) * magconOffset);
+	memset((void *) h_stBuffors, 0, sizeof(CPU_JPEG2K::CoefficientState) * magconOffset);
+	//CHECK_ERRORS(cudaMemset((void *) d_stBuffors, 0, sizeof(CPU_JPEG2K::CoefficientState) * magconOffset));
+
+	//cuda_memcpy_htd(h_infos, d_infos, sizeof(CodeBlockAdditionalInfo) * codeBlocks);
+
+	// cudaEvent_t start, end;
+	// cudaEventCreate(&start);
+	// cudaEventCreate(&end);
+
+	// cudaEventRecord(start, 0);
+
+	//CPU_JPEG2K::launch_decode(d_stBuffors, d_inbuf, maxOutLength, d_infos, codeBlocks);
+	long int start_kernel;
+	start_kernel = start_measure();
+	CPU_JPEG2K::launch_decode(h_stBuffors, h_inbuf, maxOutLength, h_infos, codeBlocks);
+	printf("kernel_cpu_time %ld ms\n",stop_measure(start_kernel)/1000);
+	CPU_JPEG2K::CodeBlockAdditionalInfo *d_infos;
+	d_infos = (CPU_JPEG2K::CodeBlockAdditionalInfo *) malloc(sizeof(CPU_JPEG2K::CodeBlockAdditionalInfo) * codeBlocks);
+	long int total_allocate_time = 0;
+	for(int i = 0; i < codeBlocks; i++)
+	{
+		long int start_allocate;
+		start_allocate = start_measure();
+		cuda_d_allocate_mem((void **) &(d_infos[i].coefficients), sizeof(int) * infos[i].nominalWidth * infos[i].nominalHeight);
+		cuda_memcpy_htd(h_infos[i].coefficients, d_infos[i].coefficients, sizeof(int) * infos[i].nominalWidth * infos[i].nominalHeight);
+		infos[i].coefficients = d_infos[i].coefficients;
+		free(h_infos[i].coefficients);
+		total_allocate_time += stop_measure(start_allocate);
+	}
+	printf("total_allocate_time %d\n",total_allocate_time);
+	// cudaEventRecord(end, 0);
+
+	// cuda_d_free(d_inbuf);
+	// cuda_d_free(d_stBuffors);
+	//cuda_d_free(d_infos);
+
+	free(h_inbuf);
+	free(h_stBuffors);
+	free(h_infos);
+
+	float elapsed = 0.0f;
+	//cudaEventElapsedTime(&elapsed, start, end);
+	
+	return elapsed;
+}
+
 void convert_to_task(EntropyCodingTaskInfo &task, const type_codeblock &cblk)
 {
 	task.coefficients = cblk.data_d;
@@ -305,11 +398,11 @@ void encode_tasks_serial(type_tile *tile) {
 	for(; ii != cblks.end(); ++ii)
 		convert_to_task(tasks[num_tasks++], *(*ii));
 
-//	printf("%d\n", num_tasks);
-
+	printf("num_tasks %d\n", num_tasks);
+	printf("target_size %d\n", coding_params->target_size);
 	float t = gpuEncode(tasks, num_tasks, coding_params->target_size);
 
-//	printf("kernel consumption: %f\n", t);
+	printf("kernel consumption: %f\n", t);
 
 	ii = cblks.begin();
 
@@ -400,10 +493,14 @@ void decode_tile(type_tile *tile)
 	}
 
 //	printf("%d\n", num_tasks);
-
+	long int start_decode;
+	start_decode = start_measure();
 	float t = gpuDecode(tasks, num_tasks);
-
+	//float t = cpuDecode(tasks, num_tasks);
+	printf("num_tasks %d\n",num_tasks);
+	printf("decode %ld ms\n", stop_measure(start_decode)/1000);
 	printf("kernel consumption: %f\n", t);
+	//printf("kernel consumption: %f\n", t);
 
 	ii = cblks.begin();
 

@@ -321,7 +321,8 @@ void init_tiles(type_image **_img, type_parameters *param) {
 	type_tile *tile;
 
 	println_start(INFO);
-
+	param->param_tile_h =-1U;
+	param->param_tile_w = -1U;
 	/* Checks if tile width and height are <= image width and height */
 	img->tile_h = (param->param_tile_h == -1U ? img->height : (param->param_tile_h <= img->height ?param->param_tile_h : img->height) ); ///Nominal tile height.
 	img->tile_w = (param->param_tile_w == -1U ? img->width : (param->param_tile_w <= img->width ? param->param_tile_w : img->width)); ///Nominal tile width.
@@ -376,11 +377,14 @@ void set_coding_parameters(type_image *img, type_parameters *param) {
 	img->coding_param->comp_step_x = 1;
 	img->coding_param->comp_step_y = 1;
 	img->coding_param->base_step = 1.0 / (float) (1 << (img->num_range_bits - 1));
+	printf("target_size %d\n",param->param_target_size);
 	if (param->param_target_size > 0) {
 		img->coding_param->target_size = param->param_target_size;
 	} else {
 		/** Size in bytes */
+		printf("param_bp %f\n",param->param_bp);
 		img->coding_param->target_size = (param->param_bp * img->width * img->height * img->num_components) / 8.0;
+		printf("target_size %d\n",img->coding_param->target_size);
 	}
 }
 

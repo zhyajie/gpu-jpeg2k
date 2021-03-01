@@ -28,6 +28,7 @@ along with GPU JPEG2K. If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
 #include "config/arguments.h"
 #include "config/init_device.h"
 #include "config/help.h"
@@ -52,7 +53,7 @@ along with GPU JPEG2K. If not, see <http://www.gnu.org/licenses/>.
 #include "klt/klt.h"
 #include <pthread.h>
 #include <stdint.h>
-#include "threads/thpool.h"
+#include "thpool.h"
 
 /**
  * @brief Main decoder function. It all starts here.
@@ -61,17 +62,15 @@ along with GPU JPEG2K. If not, see <http://www.gnu.org/licenses/>.
  *
  * @return 0 on success
  */
-int GPU_Decode(void *arg)
+int GPU_Decode(int argc, char **argv,int num)
 {	
 
 //	println_start(INFO);
 	type_image *img = (type_image *)malloc(sizeof(type_image));
 	memset(img, 0, sizeof(type_image));
 	img->in_file="artificial.j2k";
-	img->out_file="artificial.bmp";
 	//img->out_file=strcat("artificial.bmp",(char*)num);
-	//img->conf_file="../config_files/lossy.config";
-	img->conf_file=NULL;
+	img->conf_file="../config_files/lossy.config";
 	// check_args_dec(img);
 	// if((parse_args(argc, argv, img) == ERROR) || (check_args_dec(img) == ERROR))
 	// {
@@ -151,85 +150,73 @@ int GPU_Decode(void *arg)
 
 
 	//	get_next_box(fsrc);
-	printf("num_tiles %d \n", img->num_tiles);
+
 		// Do decoding for all tiles
-		for(i = 0; i < img->num_tiles; i++)	{
-			tile = &(img->tile[i]);
-			/* Decode data */
-			long int start_t1;
-			start_t1 = start_measure();
-			decode_tile(tile);
-			printf("t1 %ld ms\n", stop_measure(start_t1)/1000);
+		// for(i = 0; i < img->num_tiles; i++)	{
+		// 	tile = &(img->tile[i]);
+		// 	/* Decode data */
+		// 	long int start_t1;
+		// 	start_t1 = start_measure();
+		// 	decode_tile(tile);
+		// 	printf("t1 %ld ms\n", stop_measure(start_t1)/1000);
 
-			/* Dequantize data */
-			long int start_dequantion;
-			start_dequantion = start_measure();
-			dequantize_tile(tile);
-			printf("dequantize %ld ms\n", stop_measure(start_dequantion)/1000);
+		// 	/* Dequantize data */
+		// 	long int start_dequantion;
+		// 	start_dequantion = start_measure();
+		// 	dequantize_tile(tile);
+		// 	printf("dequantize %ld ms\n", stop_measure(start_dequantion)/1000);
 
-			/* Do inverse wavelet transform */
-			long int start_iwt;
-			start_iwt = start_measure();
-			iwt(tile);
-			printf("iwt %ld ms\n", stop_measure(start_iwt)/1000);
-		}
+		// 	/* Do inverse wavelet transform */
+		// 	long int start_iwt;
+		// 	start_iwt = start_measure();
+		// 	iwt(tile);
+		// 	printf("iwt %ld ms\n", stop_measure(start_iwt)/1000);
+		// }
 
-		if(img->use_mct == 1) {
-			// lossless decoder
-			if(img->wavelet_type == 0) {
-				color_decoder_lossless(img);
-			}
-			else {  //lossy decoder
-				color_decoder_lossy(img);
-			}
-		} else if (img->use_part2_mct == 1) {
-			decode_klt(img);
-		} else {
-			if(img->sign == UNSIGNED) {
-				idc_level_shifting(img);
-			}
-		}
+		// if(img->use_mct == 1) {
+		// 	// lossless decoder
+		// 	if(img->wavelet_type == 0) {
+		// 		color_decoder_lossless(img);
+		// 	}
+		// 	else {  //lossy decoder
+		// 		color_decoder_lossy(img);
+		// 	}
+		// } else if (img->use_part2_mct == 1) {
+		// 	decode_klt(img);
+		// } else {
+		// 	if(img->sign == UNSIGNED) {
+		// 		idc_level_shifting(img);
+		// 	}
+		// }
 	}
 
-	save_image(img);
+	//save_image(img);
 	free(img);
 }
-void* thread( void *arg )  
-{  
-    printf( "This is a thread and arg = %d.\n", *(int*)arg);  
-    *(int*)arg = 0;  
-    return arg;  
-}  
+#include<cstdio>
+#include<iostream>
 int main(int argc, char **argv){
-	
+	zl::ThreadPool threadPool(12);
 	type_parameters *param = (type_parameters*)malloc(sizeof(type_parameters));
 	param->param_device=0;
 	init_device(param);
-	
-	 pthread_t th;
-	int ret;  
-    int arg = 10;  
-    int *thread_ret = NULL;  
-	// GPU_Decode((void*)1);
-    // ret = pthread_create( &th, NULL, GPU_Decode, &arg );  
-    // if( ret != 0 ){  
-    //     printf( "Create thread error!\n");  
-    //     return -1;  
-    // }  
-    // printf( "This is the main process.\n" );  
-    // pthread_join( th, (void**)&thread_ret );
-	// printf( "thread_ret = %d.\n", *thread_ret);  
+	 for(int i=0;i<5;i++)
+	 GPU_Decode(argc,argv,i);
 	int __argc = argc;
 	char **__argv=argv;
-	puts("Making threadpool with 4 threads");
-	threadpool thpool = thpool_init(12);
-	puts("Adding 40 tasks to threadpool");
-	int i;
-	for (i=0; i<100; i++){
-	thpool_add_work(thpool, GPU_Decode, (void*)(uintptr_t)i);
-	};
-
-	thpool_wait(thpool);
-	puts("Killing threadpool");
-	thpool_destroy(thpool);
+	
+	for(int i=0;i<20;i++){
+		std::cout<<argc<<" "<<(char*)argv<<std::endl;
+		threadPool.addTask(std::bind(&GPU_Decode, __argc,__argv,i));
+	}
+	while(1)  
+    {  
+        //printf("there are still %d tasks need to process\n", threadPool.size());  
+        if (threadPool.size() == 0)
+        {  
+            threadPool.stop();
+            printf("Now I will exit from main\n"); 
+            break;   
+        }   
+    }  
 }

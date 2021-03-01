@@ -131,6 +131,7 @@ int check_args_enc(type_image *img) {
 }
 
 int check_args_dec(type_image *img) {
+	
 	if (strstr(img->out_file, ".bsq") != NULL)
 		img->bsq_file = 1;
 	if (strstr(img->out_file, ".bip") != NULL)
@@ -138,13 +139,14 @@ int check_args_dec(type_image *img) {
 	if (strstr(img->out_file, ".bil") != NULL)
 		img->bil_file = 1;
 
-
+	
 	if (img->in_file != NULL) {
 		if ((strstr(img->in_file, ".j2k") == NULL) && (strstr(img->in_file, ".jp2") == NULL)) {
 			fprintf(stderr, "Wrong input file: %s! (Should be *.j2k or *.jp2)\n", img->in_hfile);
 			return ERROR;
 		}
 	}
+	
 	return check_args(img);
 }
 

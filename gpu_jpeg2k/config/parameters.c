@@ -40,7 +40,7 @@ void default_config_values(type_parameters *param) {
 	param->param_tile_comp_dlvls = 4;
 	param->param_cblk_exp_w = 6;
 	param->param_cblk_exp_h = 6;
-	param->param_wavelet_type = 1;
+	param->param_wavelet_type = 0;//53-lossloss
 	param->param_use_mct = 0;
 	param->param_device = 0;
 	param->param_target_size = 0;

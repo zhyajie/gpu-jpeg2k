@@ -206,7 +206,7 @@ void launch_pcrd(int maxStatesPerCodeBlock, int targetSize, float slopeMax, int 
 
 	minSize = overHead + truncateSize(codeBlocks, maxStatesPerCodeBlock, infos, pcrdCodeblocks, pcrdCodeblockInfos, lambdaMax);
 
-//	printf("minSize:%d\n", minSize);
+	printf("minSize:%d\n", minSize);
 
 	if(targetSize <= minSize)
 	{
@@ -216,7 +216,7 @@ void launch_pcrd(int maxStatesPerCodeBlock, int targetSize, float slopeMax, int 
 
 	maxSize = overHead + truncateSize(codeBlocks, maxStatesPerCodeBlock, infos, pcrdCodeblocks, pcrdCodeblockInfos, lambdaMin);
 
-//	printf("maxSize:%d\n", maxSize);
+	printf("maxSize:%d\n", maxSize);
 
 	if(targetSize >= maxSize)
 	{

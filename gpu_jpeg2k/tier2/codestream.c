@@ -114,6 +114,8 @@ void read_siz_marker(type_buffer *buffer, type_image *img)
 	img->width = read_buffer(buffer, 4);
 	/* Ysiz - original image height */
 	img->height = read_buffer(buffer, 4);
+	println_var(INFO, "img->width %d", img->width);
+	println_var(INFO, "img->height %d", img->height);
 	/* XOsiz - horizontal offset from the origin of the reference grid to the left side of the image area */
 	img->coding_param->imgarea_tlx = read_buffer(buffer, 4);
 	/* YOsiz - vertical offset from the origin of the reference grid to the top side of the image area */
@@ -122,6 +124,8 @@ void read_siz_marker(type_buffer *buffer, type_image *img)
 	img->tile_w = read_buffer(buffer, 4);
 	/* YTsiz - nominal tile height*/
 	img->tile_h = read_buffer(buffer, 4);
+	println_var(INFO, "img->tile_w %d", img->tile_w);
+	println_var(INFO, "img->tile_h %d", img->tile_h);
 	/* XTOsiz - horizontal offset from the origin of the reference grid to the left side of the first tile */
 	img->coding_param->tilegrid_tlx = read_buffer(buffer, 4);
 	/* YTOsiz - vertical offset from the origin of the reference grid to the top side of the first tile */
@@ -367,7 +371,7 @@ void read_qcd_marker(type_buffer * buffer, type_image *img)
 						sb->mant = mant;
 					}
 				}
-			} else /* Derived quantization */
+			} else if(tile_comp->quant_style == 1)/* Derived quantization */
 			{
 				tmp = read_buffer(buffer, 2);
 				expn = tmp >> 11;
@@ -396,6 +400,24 @@ void read_qcd_marker(type_buffer * buffer, type_image *img)
 
 						sb->step_size = sb_ll->step_size;
 
+//						printf("%f\n", sb->step_size);
+					}
+				}
+			} else
+			{
+				for (k = 0; k < tile_comp->num_rlvls; k++) {
+					type_res_lvl *res_lvl = &(tile_comp->res_lvls[k]);
+					for (l = 0; l < res_lvl->num_subbands; l++) {
+						type_subband *sb = &(res_lvl->subbands[l]);
+						tmp = read_buffer(buffer, 2);
+						expn = tmp >> 11;
+						mant = tmp & 0x7ff;
+
+						sb->expn = (expn - ((k * 3 + l) - 1)) > 0 ? (expn - ((k * 3 + l) - 1)) : 0;
+						sb->mant = mant;
+//						printf("%d %d\n", sb->expn, sb->mant);
+						sb->step_size = (-1.0f - ((float) (mant)) / (1 << 11))
+									/ (-1 <<expn);
 //						printf("%f\n", sb->step_size);
 					}
 				}
@@ -820,17 +842,17 @@ void decode_packet_header(type_buffer *buffer, type_res_lvl *res_lvl)
 			println_var(INFO, "Error: Expected SOP(%x) marker instead of %x", SOP, marker);
 		}
 	}
-
 	packet_present = read_bits(buffer, 1);
 
 	if(!packet_present)
 	{
 		println_var(INFO, "Error: Currently empty packets are unsupported");
 	}
-
+	//println_var(INFO,"res_lvl->num_subbands %d\n",res_lvl->num_subbands);
 	for (i = 0; i < res_lvl->num_subbands; i++) {
 		sb = &(res_lvl->subbands[i]);
 		for (j = 0; j < sb->num_cblks; j++) {
+			//println_var(INFO,"sb->num_cblks %d\n",sb->num_cblks);
 			int included, increment;
 			cblk = &(sb->cblks[j]);
 
@@ -839,7 +861,7 @@ void decode_packet_header(type_buffer *buffer, type_res_lvl *res_lvl)
 			{
 				/* Code-block inclusion */
 				included = decode_tag_tree(buffer, sb->inc_tt, cblk->cblk_no, layer + 1);
-				//printf("included %d cblkno %d resno %d\n", included, cblk->cblk_no, res_lvl->res_lvl_no);
+				//println_var(INFO,"included %d cblkno %d resno %d　layer　%d\n", included, cblk->cblk_no, res_lvl->res_lvl_no,layer);
 			} else {
 				println_var(INFO, "Error: Currently more than one layer is not supported");
 			}
@@ -869,7 +891,7 @@ void decode_packet_header(type_buffer *buffer, type_res_lvl *res_lvl)
 					sb->mag_bits = (&res_lvl_zero->subbands[0])->expn - (tile_comp->num_dlvls - res_lvl->dec_lvl_no) + tile_comp->num_guard_bits -1;
 				}
 
-//				printf("sb->orient:%d mag_bits: %d expn:%d\n", sb->orient, sb->mag_bits, (&res_lvl_zero->subbands[0])->expn);
+				//printf("sb->orient:%d mag_bits: %d expn:%d\n", sb->orient, sb->mag_bits, (&res_lvl_zero->subbands[0])->expn);
 				/* Number of significant bits */
 				cblk->significant_bits = sb->mag_bits - kmsbs;
 				//printf("mag_bits %d significant_bits %d\n", sb->mag_bits, cblk->significant_bits);
@@ -951,16 +973,15 @@ void decode_packet_body(type_buffer *buffer, type_res_lvl *res_lvl)
 
 			cuda_h_allocate_mem((void **) &(cblk->codestream), cblk->length);
 			cuda_memcpy_hth(buffer->bp, cblk->codestream, cblk->length);
+			// int z;
 
-//			int z;
-//
-//			for(z = 0; z < cblk->length; z++)
-//			{
-//				printf("%x", cblk->codestream[z]);
-//			}
-//			printf("\n");
+			// for(z = 0; z < cblk->length; z++)
+			// {
+			// 	printf("%x", cblk->codestream[z]);
+			// }
+			// printf("\n");
 
-			//printf("memcpy length %d\n", cblk->length);
+			// printf("memcpy length %d\n", cblk->length);
 			skip_buffer(buffer, cblk->length);
 		}
 	}
@@ -1031,6 +1052,7 @@ void decode_tiles(type_buffer *buffer, type_tile *tile)
 		println_var(INFO, "Error: Expected SOD(%x) marker instead of %x", SOD, marker);
 	}
 
+	println_var(INFO,"img->num_dlvls %d img->num_components %d\n",img->num_dlvls,img->num_components);
 	/* Currently we only support resolution level - layer - component - position progression */
 	/* One precinct for resolution level and one layer for codestream. */
 	for (res_no = 0; res_no < img->num_dlvls + 1; res_no++) {
@@ -1096,6 +1118,7 @@ void decode_codestream(type_buffer *buffer, type_image *img)
 
 	for (i = 0; i < img->num_tiles; i++) {
 		tile = &(img->tile[i]);
+		//printf("num_tiles %d\n",img->num_tiles);
 		decode_tiles(buffer, tile);
 	}
 
